@@ -108,7 +108,16 @@ FlutterMethodChannel *_channel;
                                   double seconds = [call.arguments[@"position"] doubleValue];
                                   [self seek:playerId time:CMTimeMakeWithSeconds(seconds,1)];
                                 }
-                              }
+                              },
+                            @"volume":
+                            ^{
+                                if(!call.arguments[@"volume"]){
+                                    result(0);
+                                } else {
+                                    float volume = (float) [call.arguments[@"volume"] doubleValue];
+                                    [self volume:playerId volume:volume];
+                                }
+                            }
                             };
 
     CaseBlock c = methods[call.method];
@@ -216,7 +225,19 @@ FlutterMethodChannel *_channel;
 {
     NSMutableDictionary *playerInfo = players[playerId];
     AVPlayer *player = playerInfo[@"player"];
-    [[player currentItem] seekToTime:time];
+
+    [_channel invokeMethod:@"audio.seekToFinished" arguments:@{@"playerId": playerId, @"value": @(NO)}];
+    [[player currentItem] seekToTime:time completionHandler:^(BOOL finished)
+    {
+        [_channel invokeMethod:@"audio.seekToFinished" arguments:@{@"playerId": playerId, @"value": @(finished)}];
+    }];
+}
+
+- (void)volume:(NSString *)playerId volume:(float)volume
+{
+    NSMutableDictionary *playerInfo = players[playerId];
+    AVPlayer *player = playerInfo[@"player"];
+    [player setVolume:volume];
 }
 
 - (void)updateDuration:(NSString *)playerId

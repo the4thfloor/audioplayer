@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 
 typedef void TimeChangeHandler(Duration duration);
+typedef void SeekToFinishedHandler(bool finished);
 typedef void ErrorHandler(String message);
 
 class AudioPlayer {
@@ -16,6 +17,7 @@ class AudioPlayer {
   TimeChangeHandler durationHandler;
   TimeChangeHandler positionHandler;
   VoidCallback completionHandler;
+  SeekToFinishedHandler seekToFinishedHandler;
   ErrorHandler errorHandler;
   String playerId;
 
@@ -33,6 +35,9 @@ class AudioPlayer {
 
   Future<int> seek(double seconds) => _channel.invokeMethod('seek', {"playerId": playerId, "position": seconds});
 
+  /// set audio volume from 0.0 (silent) to1.0 (max)
+  Future<int> volume(double volume) => _channel.invokeMethod('volume', {"playerId": playerId, "volume": volume});
+
   void setDurationHandler(TimeChangeHandler handler) {
     durationHandler = handler;
   }
@@ -43,6 +48,10 @@ class AudioPlayer {
 
   void setCompletionHandler(VoidCallback callback) {
     completionHandler = callback;
+  }
+
+  void setSeekToFinishedHandler(SeekToFinishedHandler callback) {
+    seekToFinishedHandler = callback;
   }
 
   void setErrorHandler(ErrorHandler handler) {
@@ -74,6 +83,11 @@ class AudioPlayer {
       case "audio.onComplete":
         if (player.completionHandler != null) {
           player.completionHandler();
+        }
+        break;
+      case "audio.seekToFinished":
+        if (player.seekToFinishedHandler != null) {
+          player.seekToFinishedHandler();
         }
         break;
       case "audio.onError":
