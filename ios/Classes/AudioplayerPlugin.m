@@ -1,7 +1,5 @@
 #import "AudioplayerPlugin.h"
-#import <UIKit/UIKit.h>
 #import <AVKit/AVKit.h>
-#import <AVFoundation/AVFoundation.h>
 
 //#import <audioplayer/audioplayer-Swift.h>
 static NSString *const CHANNEL_NAME = @"bz.rxla.flutter/audio";
@@ -72,7 +70,7 @@ FlutterMethodChannel *_channel;
                                 float volume = (float)[call.arguments[@"volume"] doubleValue] ;
                                 NSLog(@"isLocal: %d %@",isLocal, call.arguments[@"isLocal"] );
                                 NSLog(@"volume: %f %@",volume, call.arguments[@"volume"] );
-                                [self togglePlay:playerId url:url isLocal:isLocal volume:volume];
+                                  [self play:playerId url:url isLocal:isLocal volume:volume];
                               },
                             @"pause":
                               ^{
@@ -106,77 +104,84 @@ FlutterMethodChannel *_channel;
 }
 
 
--(void) togglePlay: (NSString*) playerId
-               url: (NSString*) url
-           isLocal: (int) isLocal
-            volume: (float) volume
+- (void)play:(NSString *)playerId url:(NSString *)url isLocal:(int)isLocal volume:(float)volume
 {
-  NSMutableDictionary * playerInfo = players[playerId];
-  AVPlayer *player = playerInfo[@"player"];
-  NSMutableSet *observers = playerInfo[@"observers"];
-  AVPlayerItem *playerItem;
-  
-  NSLog(@"togglePlay %@",url );
-    
-  if (!playerInfo || ![url isEqualToString:playerInfo[@"url"]]) {
+    NSMutableDictionary *playerInfo = players[playerId];
+    AVPlayer *player = playerInfo[@"player"];
+    NSMutableSet *observers = playerInfo[@"observers"];
+    AVPlayerItem *playerItem;
 
-    [playerItem removeObserver:self
-                    forKeyPath:@"player.currentItem.status"];
-    
-    if( isLocal ){
-      playerItem = [[ AVPlayerItem alloc]initWithURL:[NSURL fileURLWithPath:url]];
-    } else {
-      playerItem = [[ AVPlayerItem alloc] initWithURL:[NSURL URLWithString:url ]];
-    }
-    
+    NSLog(@"togglePlay %@", url);
 
-    if (playerInfo){
-      [playerInfo setObject:url forKey:@"url"];
-        
-      for (id ob in observers)
-         [[NSNotificationCenter defaultCenter] removeObserver:ob];
-      [observers removeAllObjects];
-    
-      [ player replaceCurrentItemWithPlayerItem: playerItem ];
-    } else {
-      player = [[ AVPlayer alloc ] initWithPlayerItem: playerItem ];
-      observers = [[NSMutableSet alloc] init];
-      playerInfo = [@{@"player": player, @"url": url, @"isPlaying": @false, @"observers": observers} mutableCopy];
-      players[playerId] = playerInfo;
-      
-      // stream player position
-      CMTime interval = CMTimeMakeWithSeconds(0.2, NSEC_PER_SEC);
-      id timeObserver = [ player  addPeriodicTimeObserverForInterval: interval queue: nil usingBlock:^(CMTime time){
-        //NSLog(@"time interval: %f",CMTimeGetSeconds(time));
-        [self onTimeInterval:playerId time:time];
-      }];
-        [timeobservers addObject:@{@"player":player, @"observer":timeObserver}];
+    if (!playerInfo || ![url isEqualToString:playerInfo[@"url"]])
+    {
+        if (isLocal)
+        {
+            playerItem = [[AVPlayerItem alloc] initWithURL:[NSURL fileURLWithPath:url]];
+        }
+        else
+        {
+            playerItem = [[AVPlayerItem alloc] initWithURL:[NSURL URLWithString:url]];
+        }
+
+        if (observers)
+        {
+            for (id ob in observers)
+            {
+                [[NSNotificationCenter defaultCenter] removeObserver:ob];
+            }
+            [observers removeAllObjects];
+        }
+
+        if (player)
+        {
+            [player pause];
+        }
+
+
+        player = [[AVPlayer alloc] initWithPlayerItem:playerItem];
+        observers = [[NSMutableSet alloc] init];
+        playerInfo = [@{@"player"   : player,
+                        @"url"      : url,
+                        @"isPlaying": @false,
+                        @"observers": observers} mutableCopy];
+        players[playerId] = playerInfo;
+
+        // stream player position
+        CMTime interval = CMTimeMakeWithSeconds(0.2, NSEC_PER_SEC);
+        id timeObserver = [player addPeriodicTimeObserverForInterval:interval
+                                                               queue:nil
+                                                          usingBlock:^(CMTime time)
+                                                          {
+                                                              //NSLog(@"time interval: %f",CMTimeGetSeconds(time));
+                                                              [self onTimeInterval:playerId
+                                                                              time:time];
+                                                          }];
+        [timeobservers addObject:@{@"player": player, @"observer": timeObserver}];
+
+
+        id anobserver = [[NSNotificationCenter defaultCenter]
+                                               addObserverForName:AVPlayerItemDidPlayToEndTimeNotification
+                                                           object:playerItem
+                                                            queue:nil
+                                                       usingBlock:^(NSNotification *note)
+                                                       {
+                                                           [self onSoundComplete:playerId];
+                                                       }];
+        [observers addObject:anobserver];
+
+        // is sound ready
+        [[player currentItem]
+                 addObserver:self
+                  forKeyPath:@"player.currentItem.status"
+                     options:0
+                     context:(__bridge void *) playerId];
     }
-    
-    
-    id anobserver = [[ NSNotificationCenter defaultCenter ] addObserverForName: AVPlayerItemDidPlayToEndTimeNotification
-                                                                        object: playerItem
-                                                                         queue: nil
-                                                                    usingBlock:^(NSNotification* note){
-                                                                        [self onSoundComplete:playerId];
-                                                                    }];
-    [observers addObject:anobserver];
-  
-    // is sound ready
-    [[player currentItem] addObserver:self
-                           forKeyPath:@"player.currentItem.status"
-                              options:0
-                              context:(void*)playerId];
-  }
-  
-  if ([playerInfo[@"isPlaying"] boolValue]){
-    [ self pause:playerId ];
-  } else {
-    [ self updateDuration:playerId ];
-    [ player setVolume:volume ];
-    [ player play];
+
+    [self updateDuration:playerId];
+    [player setVolume:volume];
+    [player play];
     [playerInfo setObject:@true forKey:@"isPlaying"];
-  }
 }
 
 
@@ -199,7 +204,6 @@ FlutterMethodChannel *_channel;
 
 -(void) onTimeInterval: (NSString *) playerId
                   time: (CMTime) time {
-  NSLog(@"ios -> onTimeInterval...");
   int mseconds =  CMTimeGetSeconds(time)*1000;
   [_channel invokeMethod:@"audio.onCurrentPosition" arguments:@{@"playerId": playerId, @"value": @(mseconds)}];
 }
