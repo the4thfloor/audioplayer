@@ -229,6 +229,9 @@ FlutterMethodChannel *_channel;
     [_channel invokeMethod:@"audio.seekToFinished" arguments:@{@"playerId": playerId, @"value": @(NO)}];
     [[player currentItem] seekToTime:time completionHandler:^(BOOL finished)
     {
+        CMTime currentTime = [player currentTime];
+        int mseconds = CMTimeGetSeconds(currentTime) * 1000;
+        [_channel invokeMethod:@"audio.onCurrentPosition" arguments:@{@"playerId": playerId, @"value": @(mseconds)}];
         [_channel invokeMethod:@"audio.seekToFinished" arguments:@{@"playerId": playerId, @"value": @(finished)}];
     }];
 }
