@@ -121,6 +121,7 @@ public class AudioplayerPlugin implements MethodCallHandler, MediaPlayer.OnPrepa
         mediaPlayers.put(playerId, Pair.create(url, mediaPlayer));
         mediaPlayer.setOnPreparedListener(this);
         mediaPlayer.setOnCompletionListener(this);
+        mediaPlayer.setOnSeekCompleteListener(this);
         mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
         mediaPlayer.setDataSource(url);
         mediaPlayer.setVolume(volume, volume);

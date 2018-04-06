@@ -1,12 +1,8 @@
 import 'dart:async';
-import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:audioplayers/audioplayer.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart';
-import 'package:path_provider/path_provider.dart';
 
 typedef void OnError(Exception exception);
 
@@ -26,8 +22,6 @@ class AudioApp extends StatefulWidget {
 
 class _AudioAppState extends State<AudioApp> {
   AudioPlayer audioPlayer;
-
-  String localFilePath;
 
   PlayerState playerState = PlayerState.stopped;
 
@@ -56,35 +50,6 @@ class _AudioAppState extends State<AudioApp> {
     });
   }
 
-  Future _playLocal() async {
-    final result = await audioPlayer.play(localFilePath, isLocal: true);
-    if (result == 1) setState(() => playerState = PlayerState.playing);
-  }
-
-  Future<Uint8List> _loadFileBytes(String url, {OnError onError}) async {
-    Uint8List bytes;
-    try {
-      bytes = await readBytes(url);
-    } on ClientException {
-      rethrow;
-    }
-    return bytes;
-  }
-
-  Future _loadFile() async {
-    final bytes = await _loadFileBytes(kUrl1,
-        onError: (Exception exception) => print('_MyHomePageState._loadVideo => exception ${exception}'));
-
-    final dir = await getApplicationDocumentsDirectory();
-    final file = new File('${dir.path}/audio.mp3');
-
-    await file.writeAsBytes(bytes);
-    if (await file.exists())
-      setState(() {
-        localFilePath = file.path;
-      });
-  }
-
   @override
   Widget build(BuildContext context) {
     return new Center(
@@ -92,19 +57,6 @@ class _AudioAppState extends State<AudioApp> {
         children: [
           new _PlayerUiWidget(url: kUrl1),
           new _PlayerUiWidget(url: kUrl2),
-          localFilePath != null ? new Text(localFilePath) : new Container(),
-          new Row(
-            children: [
-              new RaisedButton(
-                onPressed: () => _loadFile(),
-                child: new Text('Download'),
-              ),
-              new RaisedButton(
-                onPressed: () => _playLocal(),
-                child: new Text('play local'),
-              ),
-            ],
-          ),
         ],
       ),
     );

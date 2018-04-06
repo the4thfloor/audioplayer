@@ -87,7 +87,7 @@ class AudioPlayer {
         break;
       case "audio.seekToFinished":
         if (player.seekToFinishedHandler != null) {
-          player.seekToFinishedHandler(call.arguments);
+          player.seekToFinishedHandler(value);
         }
         break;
       case "audio.onError":
