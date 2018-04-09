@@ -26,17 +26,31 @@ class AudioPlayer {
     players[playerId] = this;
   }
 
-  Future<int> play(String url, {bool isLocal: false, double volume: 1.0}) =>
-      _channel.invokeMethod('play', {"playerId": playerId, "url": url, "isLocal": isLocal, 'volume': volume});
+  Future<int> play(String url, {bool isLocal: false, double volume: 1.0}) async {
+    final int state = await _channel.invokeMethod('play', {"playerId": playerId, "url": url, "isLocal": isLocal, 'volume': volume});
+    return Future.value(state);
+  }
 
-  Future<int> pause() => _channel.invokeMethod('pause', {"playerId": playerId});
+  Future<int> pause() async {
+    final int state = await _channel.invokeMethod('pause', {"playerId": playerId});
+    return Future.value(state);
+  }
 
-  Future<int> stop() => _channel.invokeMethod('stop', {"playerId": playerId});
+  Future<int> stop() async {
+    final int state = await _channel.invokeMethod('stop', {"playerId": playerId});
+    return Future.value(state);
+  }
 
-  Future<int> seek(double seconds) => _channel.invokeMethod('seek', {"playerId": playerId, "position": seconds});
+  Future<int> seek(double seconds) async {
+    final int state = await _channel.invokeMethod('seek', {"playerId": playerId, "position": seconds});
+    return Future.value(state);
+  }
 
   /// set audio volume from 0.0 (silent) to1.0 (max)
-  Future<int> volume(double volume) => _channel.invokeMethod('volume', {"playerId": playerId, "volume": volume});
+  Future<int> volume(double volume) async {
+    final int state = await _channel.invokeMethod('volume', {"playerId": playerId, "volume": volume});
+    return Future.value(state);
+  }
 
   void setDurationHandler(TimeChangeHandler handler) {
     durationHandler = handler;
