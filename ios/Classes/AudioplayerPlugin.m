@@ -7,7 +7,7 @@ static NSString *const CHANNEL_NAME = @"bz.rxla.flutter/audio";
 - (void)play:(NSString *)playerId url:(NSString *)url isLocal:(int)isLocal volume:(float)volume loop:(BOOL)loop;
 - (void)pause:(NSString *)playerId;
 - (void)stop:(NSString *)playerId;
-- (void)seek:(NSString *)playerId time:(CMTime)time;
+- (void)seek:(NSString *)playerId time:(CMTime)time notify:(BOOL)notify;
 - (void)loop:(NSString *)playerId;
 - (void)onSoundComplete:(NSString *)playerId;
 - (void)updateDuration:(NSString *)playerId;
@@ -109,7 +109,7 @@ FlutterMethodChannel *_channel;
                                   result(0);
                                 } else {
                                   double seconds = [call.arguments[@"position"] doubleValue];
-                                  [self seek:playerId time:CMTimeMakeWithSeconds(seconds,1)];
+                                  [self seek:playerId time:CMTimeMakeWithSeconds(seconds, 1) notify:YES];
                                 }
                               },
                             @"volume":
@@ -235,22 +235,30 @@ FlutterMethodChannel *_channel;
 {
     NSLog(@"stop player %@", playerId);
     [self pause:playerId];
-    [self seek:playerId time:CMTimeMake(0, 1)];
+    [self seek:playerId time:CMTimeMake(0, 1) notify:NO];
 }
 
-- (void)seek:(NSString *)playerId time:(CMTime)time
+- (void)seek:(NSString *)playerId time:(CMTime)time notify:(BOOL)notify
 {
+    NSLog(@"seek player %@", playerId);
     NSMutableDictionary *playerInfo = players[playerId];
     AVPlayer *player = playerInfo[@"player"];
 
-    [_channel invokeMethod:@"audio.seekToFinished" arguments:@{@"playerId": playerId, @"value": @(NO)}];
-    [[player currentItem] seekToTime:time completionHandler:^(BOOL finished)
+    if (notify)
     {
-        CMTime currentTime = [player currentTime];
-        int mseconds = CMTimeGetSeconds(currentTime) * 1000;
-        [_channel invokeMethod:@"audio.onCurrentPosition" arguments:@{@"playerId": playerId, @"value": @(mseconds)}];
-        [_channel invokeMethod:@"audio.seekToFinished" arguments:@{@"playerId": playerId, @"value": @(finished)}];
-    }];
+        [_channel invokeMethod:@"audio.seekToFinished" arguments:@{@"playerId": playerId, @"value": @(NO)}];
+        [[player currentItem] seekToTime:time completionHandler:^(BOOL finished)
+        {
+            CMTime currentTime = [player currentTime];
+            int mseconds = CMTimeGetSeconds(currentTime) * 1000;
+            [_channel invokeMethod:@"audio.onCurrentPosition" arguments:@{@"playerId": playerId, @"value": @(mseconds)}];
+            [_channel invokeMethod:@"audio.seekToFinished" arguments:@{@"playerId": playerId, @"value": @(finished)}];
+        }];
+    }
+    else
+    {
+        [[player currentItem] seekToTime:time completionHandler:nil];
+    }
 }
 
 - (void)volume:(NSString *)playerId volume:(float)volume
@@ -294,8 +302,6 @@ FlutterMethodChannel *_channel;
 - (void)onSoundComplete:(NSString *)playerId
 {
     NSLog(@"onSoundComplete %@", playerId);
-    [self pause:playerId];
-    [self seek:playerId time:CMTimeMakeWithSeconds(0, 1)];
     [_channel invokeMethod:@"audio.onComplete" arguments:@{@"playerId": playerId}];
 }
 
