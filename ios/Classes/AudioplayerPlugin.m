@@ -19,10 +19,10 @@ static NSString *const CHANNEL_NAME = @"bz.rxla.flutter/audio";
 @implementation AudioplayerPlugin
 {
     NSMutableDictionary *players;
+    NSMutableSet *timeobservers;
     AVAudioSession *audioSession;
 }
 
-NSMutableSet *timeobservers;
 FlutterMethodChannel *_channel;
 
 
@@ -40,6 +40,7 @@ FlutterMethodChannel *_channel;
     if (self)
     {
         players = [[NSMutableDictionary alloc] init];
+        timeobservers = [[NSMutableSet alloc] init];
 
         audioSession = [AVAudioSession sharedInstance];
         NSError *audioSessionError = nil;
@@ -165,6 +166,13 @@ FlutterMethodChannel *_channel;
         if (player)
         {
             [player pause];
+            for (id value in timeobservers)
+            {
+                if (value[@"player"] == player)
+                {
+                    [player removeTimeObserver:value[@"observer"]];
+                }
+            }
         }
 
         player = [[AVPlayer alloc] initWithPlayerItem:playerItem];
