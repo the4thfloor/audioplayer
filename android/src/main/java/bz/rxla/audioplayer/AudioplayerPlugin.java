@@ -44,8 +44,9 @@ public class AudioplayerPlugin implements MethodCallHandler, MediaPlayer.OnPrepa
             case "play":
                 final String url = call.argument("url");
                 final double volume = call.argument("volume");
+                final boolean loop = call.argument("loop");
                 try {
-                    play(playerId, url, (float) volume);
+                    play(playerId, url, (float) volume, loop);
                     response.success(1);
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -104,7 +105,10 @@ public class AudioplayerPlugin implements MethodCallHandler, MediaPlayer.OnPrepa
         }
     }
 
-    private void play(final String playerId, final String url, final float volume) throws IOException {
+    private void play(final String playerId,
+                      final String url,
+                      final float volume,
+                      final boolean loop) throws IOException {
 
         Pair<String, MediaPlayer> pair = mediaPlayers.get(playerId);
 
@@ -125,6 +129,7 @@ public class AudioplayerPlugin implements MethodCallHandler, MediaPlayer.OnPrepa
         mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
         mediaPlayer.setDataSource(url);
         mediaPlayer.setVolume(volume, volume);
+        mediaPlayer.setLooping(loop);
         mediaPlayer.prepareAsync();
     }
 

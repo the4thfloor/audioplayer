@@ -4,10 +4,11 @@
 static NSString *const CHANNEL_NAME = @"bz.rxla.flutter/audio";
 
 @interface AudioplayerPlugin ()
-- (void)play:(NSString *)playerId url:(NSString *)url isLocal:(int)isLocal volume:(float)volume;
+- (void)play:(NSString *)playerId url:(NSString *)url isLocal:(int)isLocal volume:(float)volume loop:(BOOL)loop;
 - (void)pause:(NSString *)playerId;
 - (void)stop:(NSString *)playerId;
 - (void)seek:(NSString *)playerId time:(CMTime)time;
+- (void)loop:(NSString *)playerId;
 - (void)onSoundComplete:(NSString *)playerId;
 - (void)updateDuration:(NSString *)playerId;
 - (void)onTimeInterval:(NSString *)playerId time:(CMTime)time;
@@ -91,7 +92,8 @@ FlutterMethodChannel *_channel;
                                   }
                                   int isLocal = [call.arguments[@"isLocal"] intValue];
                                   float volume = (float) [call.arguments[@"volume"] doubleValue];
-                                  [self play:playerId url:url isLocal:isLocal volume:volume];
+                                  BOOL loop = (BOOL) [call.arguments[@"loop"] boolValue];
+                                  [self play:playerId url:url isLocal:isLocal volume:volume loop:loop];
                               },
                             @"pause":
                               ^{
@@ -134,7 +136,7 @@ FlutterMethodChannel *_channel;
     result(@(1));
 }
 
-- (void)play:(NSString *)playerId url:(NSString *)url isLocal:(int)isLocal volume:(float)volume
+- (void)play:(NSString *)playerId url:(NSString *)url isLocal:(int)isLocal volume:(float)volume loop:(BOOL)loop
 {
     NSLog(@"play %@", url);
 
@@ -198,7 +200,14 @@ FlutterMethodChannel *_channel;
                                                                  queue:nil
                                                             usingBlock:^(NSNotification *note)
                                                             {
-                                                                [self onSoundComplete:playerId];
+                                                                if (loop)
+                                                                {
+                                                                    [self loop:playerId];
+                                                                }
+                                                                else
+                                                                {
+                                                                    [self onSoundComplete:playerId];
+                                                                }
                                                             }]];
 
         // is sound ready
@@ -272,6 +281,14 @@ FlutterMethodChannel *_channel;
     int mseconds = CMTimeGetSeconds(time) * 1000;
     [_channel invokeMethod:@"audio.onCurrentPosition"
                  arguments:@{@"playerId": playerId, @"value": @(mseconds)}];
+}
+
+- (void)loop:(NSString *)playerId
+{
+    NSMutableDictionary *playerInfo = players[playerId];
+    AVPlayer *player = playerInfo[@"player"];
+    [player seekToTime:CMTimeMake(0, 1)];
+    [player play];
 }
 
 - (void)onSoundComplete:(NSString *)playerId

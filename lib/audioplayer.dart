@@ -9,7 +9,8 @@ typedef void SeekToFinishedHandler(bool finished);
 typedef void ErrorHandler(String message);
 
 class AudioPlayer {
-  static final MethodChannel _channel = const MethodChannel('bz.rxla.flutter/audio')..setMethodCallHandler(platformCallHandler);
+  static final MethodChannel _channel = const MethodChannel('bz.rxla.flutter/audio')
+    ..setMethodCallHandler(platformCallHandler);
   static final uuid = new Uuid();
   static final players = new Map<String, AudioPlayer>();
   static var logEnabled = false;
@@ -26,8 +27,8 @@ class AudioPlayer {
     players[playerId] = this;
   }
 
-  Future<int> play(String url, {bool isLocal: false, double volume: 1.0}) async {
-    final int state = await _channel.invokeMethod('play', {"playerId": playerId, "url": url, "isLocal": isLocal, 'volume': volume});
+  Future<int> play(String url, {bool isLocal: false, double volume: 1.0, bool loop: false}) async {
+    final int state = await _channel.invokeMethod('play', {"playerId": playerId, "url": url, "isLocal": isLocal, 'volume': volume, 'loop': loop});
     return new Future.value(state);
   }
 
